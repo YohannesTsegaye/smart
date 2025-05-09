@@ -5,5 +5,5 @@ const AdminRoute = () => {
 
   return isAdmin ? <Outlet /> : <Navigate to="/login" replace />;
 };
-
+///ghjkl
 export default AdminRoute;

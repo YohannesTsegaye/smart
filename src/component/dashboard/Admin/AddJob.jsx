@@ -13,7 +13,7 @@ const AddJob = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-
+//fghjk
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Job added:', formData);
