@@ -1,0 +1,169 @@
+{
+  "jobs": [
+    {
+      "id": 1,
+      "Title": "Frontend Developer",
+      "CompanyName": "Tech Corp",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Full-time",
+      "JobType": "Development",
+      "Description": "Build responsive web applications using React and Tailwind CSS.Build responsive web applications using React and Tailwind CSSvBuild responsive web applications using React and Tailwind CSSBuild responsive web applications using React and Tailwind CSS",
+      "Requirements": "2+ years of experience with React, CSS frameworks, and REST APIs.",
+      "Salary": "$80,000 - $100,000"
+    },
+    {
+      "id": 2,
+      "Title": "Backend Developer",
+      "CompanyName": "CodeWorks",
+      "WorkLocation": "San Francisco, CA",
+      "EmploymentType": "Full-time",
+      "JobType": "Development",
+      "Description": "Develop scalable backend systems using Node.js and Express.",
+      "Requirements": "3+ years with Node.js, MongoDB, and API design.",
+      "Salary": "$90,000 - $120,000"
+    },
+    {
+      "id": 3,
+      "Title": "UI/UX Designer",
+      "CompanyName": "DesignX",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Contract",
+      "JobType": "Design",
+      "Description": "Create user-friendly interfaces and prototypes for web applications.",
+      "Requirements": "Proficiency in Figma, Adobe XD, and design systems.",
+      "Salary": "$60/hr"
+    },
+    {
+      "id": 4,
+      "Title": "DevOps Engineer",
+      "CompanyName": "CloudScale",
+      "WorkLocation": "Austin, TX",
+      "EmploymentType": "Full-time",
+      "JobType": "Infrastructure",
+      "Description": "Manage CI/CD pipelines and cloud infrastructure on AWS.",
+      "Requirements": "Experience with Docker, Kubernetes, and AWS services.",
+      "Salary": "$110,000 - $130,000"
+    },
+    {
+      "id": 5,
+      "Title": "Mobile App Developer",
+      "CompanyName": "Appify",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Part-time",
+      "JobType": "Development",
+      "Description": "Build and maintain cross-platform mobile apps using Flutter.",
+      "Requirements": "1+ year with Flutter, Dart, and mobile app deployment.",
+      "Salary": "$40/hr"
+    },
+    {
+      "id": 6,
+      "Title": "Product Manager",
+      "CompanyName": "InnovaTech",
+      "WorkLocation": "New York, NY",
+      "EmploymentType": "Full-time",
+      "JobType": "Management",
+      "Description": "Lead product development lifecycle and coordinate with cross-functional teams.",
+      "Requirements": "Strong communication skills and experience managing tech products.",
+      "Salary": "$100,000 - $130,000"
+    },
+    {
+      "id": 7,
+      "Title": "Data Scientist",
+      "CompanyName": "DataNest",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Full-time",
+      "JobType": "Data",
+      "Description": "Analyze large datasets and develop predictive models.",
+      "Requirements": "Proficiency in Python, SQL, and machine learning libraries.",
+      "Salary": "$105,000 - $125,000"
+    },
+    {
+      "id": 8,
+      "Title": "QA Engineer",
+      "CompanyName": "TestLab",
+      "WorkLocation": "Chicago, IL",
+      "EmploymentType": "Full-time",
+      "JobType": "Quality Assurance",
+      "Description": "Develop and execute test plans for web and mobile applications.",
+      "Requirements": "Knowledge of Selenium, automated testing, and bug tracking tools.",
+      "Salary": "$70,000 - $90,000"
+    },
+    {
+      "id": 9,
+      "Title": "Technical Writer",
+      "CompanyName": "DocuTech",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Contract",
+      "JobType": "Writing",
+      "Description": "Create clear and concise technical documentation for developers.",
+      "Requirements": "Excellent writing skills and experience with API documentation.",
+      "Salary": "$35/hr"
+    },
+    {
+      "id": 10,
+      "Title": "Cybersecurity Analyst",
+      "CompanyName": "SecureSoft",
+      "WorkLocation": "Washington, DC",
+      "EmploymentType": "Full-time",
+      "JobType": "Security",
+      "Description": "Monitor and protect systems from security threats and vulnerabilities.",
+      "Requirements": "Knowledge of SIEM tools, penetration testing, and security protocols.",
+      "Salary": "$95,000 - $115,000"
+    },
+    {
+      "id": 11,
+      "Title": "Machine Learning Engineer",
+      "CompanyName": "NeuroNet",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Full-time",
+      "JobType": "AI",
+      "Description": "Build and deploy machine learning models for real-time systems.",
+      "Requirements": "Strong background in ML, Python, and TensorFlow or PyTorch.",
+      "Salary": "$115,000 - $140,000"
+    },
+    {
+      "id": 12,
+      "Title": "Systems Administrator",
+      "CompanyName": "InfraLink",
+      "WorkLocation": "Seattle, WA",
+      "EmploymentType": "Full-time",
+      "JobType": "IT",
+      "Description": "Manage network servers, security tools, and system upgrades.",
+      "Requirements": "Experience with Linux/Windows servers and scripting languages.",
+      "Salary": "$80,000 - $100,000"
+    },
+    {
+      "id": 13,
+      "Title": "Full Stack Developer",
+      "CompanyName": "Buildify",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Full-time",
+      "JobType": "Development",
+      "Description": "Develop and maintain web applications using React and Node.js.",
+      "Requirements": "3+ years in JavaScript frameworks, REST APIs, and databases.",
+      "Salary": "$100,000 - $120,000"
+    },
+    {
+      "id": 14,
+      "Title": "Scrum Master",
+      "CompanyName": "AgilePath",
+      "WorkLocation": "Denver, CO",
+      "EmploymentType": "Full-time",
+      "JobType": "Agile",
+      "Description": "Facilitate agile ceremonies and remove roadblocks for development teams.",
+      "Requirements": "Certified Scrum Master (CSM) with team management experience.",
+      "Salary": "$85,000 - $105,000"
+    },
+    {
+      "id": 15,
+      "Title": "Graphic Designer",
+      "CompanyName": "Creatify Studio",
+      "WorkLocation": "Remote",
+      "EmploymentType": "Freelance",
+      "JobType": "Design",
+      "Description": "Design branding materials, social media posts, and UI elements.",
+      "Requirements": "Proficiency in Adobe Creative Suite and a strong portfolio.",
+      "Salary": "$30/hr"
+    }
+  ]
+}
