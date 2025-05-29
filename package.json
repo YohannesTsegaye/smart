@@ -11,6 +11,7 @@
     "start": "vite --open"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.1.5",
     "lucide-react": "^0.507.0",
     "react": "^19.0.0",

@@ -1,32 +1,36 @@
+// Header.jsx
+import React from 'react';
 import { Link } from 'react-router-dom';
-import {AuthContext}
-const Header = () => {
-  const { currentUser } = useAuth();
 
+const Header = () => {
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-white shadow-md z-50">
-      <nav className="container mx-auto px-6 h-full flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-blue-600">
-          JobPortal
+    <header className="bg-white shadow-md">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Logo and Brand Name - Link to home */}
+        <Link to="/" className="flex items-center space-x-2">
+          {/* Replace with your actual logo */}
+          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+            SR
+          </div>
+          <h1 className="text-xl font-bold text-gray-800">Smart Recurrent</h1>
         </Link>
-        <div className="flex space-x-4">
-          {currentUser?.isAdmin && (
-            <Link 
-              to="/admin"
-              className="text-gray-700 hover:text-blue-600 transition-colors px-3 py-2"
-            >
-              Admin Panel
-            </Link>
-          )}
+
+        {/* Navigation Links */}
+        <nav className="flex items-center space-x-6">
           <Link 
-            to="/jobs" 
-            className="text-gray-700 hover:text-blue-600 transition-colors px-3 py-2"
+            to="/Job" 
+            className="text-gray-600 hover:text-blue-500 transition-colors duration-200 font-medium"
           >
             Jobs
           </Link>
-          {/* Other navigation links */}
-        </div>
-      </nav>
+          <Link 
+            to="/login" 
+            className="bg-black-500 hover:bg-white-600 text-white px-4 py-2 rounded-md transition-colors duration-200 font-medium"
+          >
+            HR Login
+          </Link>
+        </nav>
+      </div>
     </header>
   );
 };
