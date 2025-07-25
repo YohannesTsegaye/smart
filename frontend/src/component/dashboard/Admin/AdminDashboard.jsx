@@ -1,6 +1,6 @@
 const AdminDashboard = () => {
   const stats = [
-    { name: "Total Jobs", value: "124", change: "+12%", trend: "up" },
+    { name: "Total Jobs", value: "", change: "", trend: "" },
     { name: "Active Jobs", value: "89", change: "+5%", trend: "up" },
     { name: "Expired Jobs", value: "15", change: "-3%", trend: "down" },
     { name: "New Admins", value: "3", change: "+2", trend: "up" },
@@ -38,6 +38,24 @@ const AdminDashboard = () => {
           Recent Activity
         </h2>
         <div className="space-y-4">
+📊
+Dashboard
+💼
+Manage Jobs
+👤
+Candidates
+📈
+Reports
+👥
+Manage Admins
+⚙️
+Settings
+👤
+My Profile
+
+🚪
+Logout
+Dashboard
           {[1, 2, 3, 4].map((item) => (
             <div
               key={item}

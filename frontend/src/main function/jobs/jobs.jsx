@@ -1,36 +1,77 @@
 import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import SearchIcon from "../../assets/icons/SearchIcon";
 import TitleIcon from "../../assets/icons/TitleIcon";
 import CompanyIcon from "../../assets/icons/CompanyIcon";
 import LocationIcon from "../../assets/icons/LocationIcon";
 import EmploymentIcon from "../../assets/icons/EmploymentIcon";
 import JobTypeIcon from "../../assets/icons/JobTypeIcon";
+import DescriptionIcon from "../../assets/icons/DescriptionIcon";
+import RequirementsIcon from "../../assets/icons/RequirementsIcon";
+import SalaryIcon from "../../assets/icons/SalaryIcon";
+import JobsService from "../../services/jobs.service";
+import { useQueryClient } from "@tanstack/react-query";
+import CandidatesService from "../../services/candidates.service";
+
 import FileUpload from "./FileUpload";
 import Header from "../../component/comm/header";
 
 export default function Job() {
-  // State for job data and loading
-  const API_URL = "http://localhost:5000/job-posts";
-
-  const [jobsData, setJobsData] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // State for job selection and application
   const [selectedJob, setSelectedJob] = useState(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
-
-  // State for search and filters
   const [searchTerm, setSearchTerm] = useState("");
   const [employmentType, setEmploymentType] = useState("all");
   const [department, setDepartment] = useState("all");
+  const [appliedJobs, setAppliedJobs] = useState(new Set());
 
-  // Filter options
+  const queryClient = useQueryClient();
+
+  // Use React Query to fetch jobs
+  const {
+    data: jobsData = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["jobs"],
+    queryFn: async () => {
+      try {
+        console.log("Fetching jobs...");
+        const data = await JobsService.getAllJobs({ isActive: true });
+        console.log("Jobs data received:", data);
+        return data.filter((job) => job.isActive === true);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+        throw error; // Let React Query handle the error
+      }
+    },
+    refetchInterval: 30000, // Changed to 30 seconds to prevent too frequent updates
+    refetchOnWindowFocus: false, // Disabled to prevent unnecessary refetches
+    retry: 1, // Reduced retry attempts
+    staleTime: 10000, // Data stays fresh for 10 seconds
+  });
+
+  // Subscribe to job updates - only invalidate on actual changes
+  useEffect(() => {
+    const unsubscribe = JobsService.subscribeToUpdates((event) => {
+      console.log("Job update received:", event);
+      if (
+        event.type === "create" ||
+        event.type === "update" ||
+        event.type === "delete"
+      ) {
+        queryClient.invalidateQueries(["jobs"]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [queryClient]);
+
   const employmentTypes = [
     "all",
-    "remote",
-    "onsite",
-    "hybrid",
+    "Remote",
+    "Onsite",
+    "Hybrid",
     "Freelance",
     "Contract",
     "Part-time",
@@ -51,66 +92,106 @@ export default function Job() {
     "Customer Support",
   ];
 
-  // Fetch jobs data
+  // Update filtered jobs whenever jobsData or filters change
   useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(API_URL, {
-          method: "GET",
-        });
-        const data = await response.json();
-        console.log("Jobs data fetched:", data);
-        setJobsData(data || []);
-        setFilteredJobs(data || []);
-      } catch (error) {
-        console.error("Error fetching jobs:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchJobs();
-  }, []);
+    const filtered = jobsData.filter((job) => {
+      const jobTitle = job.title?.toLowerCase() || "";
+      const jobDescription = job.description?.toLowerCase() || "";
+      const jobEmploymentType = job.jobType?.toLowerCase() || "";
+      const jobDepartment = job.department?.toLowerCase() || "";
+      const searchDepartment = department.toLowerCase();
 
-  // Filter jobs based on search and filters
-  // useEffect(() => {
-  //   const filtered = jobsData.filter((job) => {
-  //     const matchesSearch =
-  //       job.Title?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-  //       job.Description?.toLowerCase()?.includes(searchTerm?.toLowerCase());
+      const matchesSearch =
+        jobTitle.includes(searchTerm.toLowerCase()) ||
+        jobDescription.includes(searchTerm.toLowerCase());
 
-  //     const matchesEmployment =
-  //       employmentType === "all" ||
-  //       job.EmploymentType?.toLowerCase() === employmentType.toLowerCase();
+      const matchesEmployment =
+        employmentType === "all" ||
+        jobEmploymentType === employmentType.toLowerCase();
 
-  //     const matchesDepartment =
-  //       department === "all" ||
-  //       job.department?.toLowerCase() === department.toLowerCase();
+      const matchesDepartment =
+        department === "all" ||
+        (jobDepartment && jobDepartment.startsWith(searchDepartment));
 
-  //     return matchesSearch && matchesEmployment && matchesDepartment;
-  //   });
+      return matchesSearch && matchesEmployment && matchesDepartment;
+    });
 
-  //   setFilteredJobs(filtered);
-  // }, [searchTerm, employmentType, department, jobsData]);
+    setFilteredJobs(filtered);
+  }, [jobsData, searchTerm, employmentType, department]);
 
-  // Handle application submission
+  // Check if user has applied to a specific job
+  const checkIfApplied = async (jobTitle, userEmail) => {
+    if (!userEmail) return false;
+    
+    try {
+      const response = await CandidatesService.checkExistingApplication(userEmail, jobTitle);
+      return response.hasApplied;
+    } catch (error) {
+      console.error("Error checking application status:", error);
+      return false;
+    }
+  };
+
+  // Get user email from localStorage or prompt user
+  const getUserEmail = () => {
+    return localStorage.getItem('userEmail') || '';
+  };
+
+  // Set user email in localStorage
+  const setUserEmail = (email) => {
+    localStorage.setItem('userEmail', email);
+  };
+
+  // Check for existing applications when component loads
+  useEffect(() => {
+    const userEmail = getUserEmail();
+    if (userEmail && jobsData.length > 0) {
+      const checkApplications = async () => {
+        const appliedJobsSet = new Set();
+        
+        for (const job of jobsData) {
+          const hasApplied = await checkIfApplied(job.title, userEmail);
+          if (hasApplied) {
+            appliedJobsSet.add(job.title);
+          }
+        }
+        
+        setAppliedJobs(appliedJobsSet);
+      };
+      
+      checkApplications();
+    }
+  }, [jobsData]);
+
   const handleSubmitApplication = (formData) => {
     console.log("Application submitted for job:", selectedJob.id, formData);
+    
+    // Save user email to localStorage
+    setUserEmail(formData.email);
+    
+    // Add job to applied jobs set
+    setAppliedJobs(prev => new Set([...prev, selectedJob.title]));
+    
     alert(`Application submitted successfully for ${selectedJob.title}!`);
     setShowApplicationForm(false);
     setSelectedJob(null);
   };
 
-  if (loading)
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="text-red-600">
+          Error loading jobs. Please make sure the server is running and try
+          again.
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading)
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         Loading jobs...
-      </div>
-    );
-  if (!jobsData.length)
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        No jobs available
       </div>
     );
 
@@ -173,18 +254,43 @@ export default function Job() {
             >
               Department
             </label>
-            <select
-              id="department"
-              className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md text-black"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-            >
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <input
+                type="text"
+                id="department"
+                className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md text-black"
+                value={department === "all" ? "" : department}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDepartment(value || "all");
+                }}
+                onFocus={() => {
+                  if (department === "all") {
+                    setDepartment("");
+                  }
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value) {
+                    setDepartment("all");
+                  }
+                }}
+                placeholder="Search departments..."
+                list="department-suggestions"
+                autoComplete="off"
+              />
+              <datalist id="department-suggestions">
+                {departments
+                  .filter(
+                    (dept) =>
+                      dept !== "all" &&
+                      (department === "" ||
+                        dept.toLowerCase().includes(department.toLowerCase()))
+                  )
+                  .map((dept) => (
+                    <option key={dept} value={dept} />
+                  ))}
+              </datalist>
+            </div>
           </div>
         </div>
       </div>
@@ -207,12 +313,18 @@ export default function Job() {
                     setShowApplicationForm(false);
                   }}
                 >
-                  <div className="space-y-3">
+                  <div className="flex items-start justify-between">
                     <div className="flex items-start">
                       <TitleIcon className="w-5 h-5 mr-2 text-blue-600" />
                       <h2 className="text-xl font-semibold text-black">
                         {job.title}
                       </h2>
+                    </div>
+                    {appliedJobs.has(job.title) && (
+                      <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        Applied
+                      </span>
+                    )}
                     </div>
                     <div className="flex items-center">
                       <CompanyIcon className="w-5 h-5 mr-2 text-black-600" />
@@ -228,48 +340,184 @@ export default function Job() {
                         {job.jobType}
                       </span>
                     </div>
-                    {job.department && (
-                      <div className="flex items-center">
-                        <JobTypeIcon className="w-5 h-5 mr-2 text-gray-600" />
-                        <span className="text-black">{job.department}</span>
-                      </div>
-                    )}
                     <button className="w-full mt-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                       View Details
                     </button>
-                  </div>
                 </div>
               ))
             ) : (
-              <div className="col-span-full text-center py-8">
-                <h3 className="text-lg font-medium text-gray-900">
-                  No jobs found
+              <div className="col-span-full text-center py-20 bg-white rounded-lg shadow-lg border border-gray-200 mx-4">
+                <div className="max-w-2xl mx-auto">
+                  <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                    No Jobs Available
                 </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Try adjusting your search filters
-                </p>
+                  <p className="text-xl text-gray-600 mb-8">
+                    {jobsData.length === 0
+                      ? "There are currently no job openings. Please check back later."
+                      : "No jobs match your current filters. Try adjusting your search criteria."}
+                  </p>
+                  {jobsData.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm("");
+                        setEmploymentType("all");
+                        setDepartment("all");
+                      }}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium shadow-md hover:shadow-lg"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
-
       {/* Job Details Modal */}
       {selectedJob && !showApplicationForm && (
-        <JobDetails
-          job={selectedJob}
-          onClose={() => setSelectedJob(null)}
-          onApply={() => setShowApplicationForm(true)}
-        />
-      )}
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto flex justify-center items-start pt-20">
+          <div className="w-full max-w-4xl p-8 text-black">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center">
+                <TitleIcon className="w-6 h-6 mr-2 text-blue-600" />
+                <h2 className="text-3xl font-bold">{selectedJob.title}</h2>
+              </div>
+              <button
+                onClick={() => setSelectedJob(null)}
+                className="text-gray-500 hover:text-black text-2xl bg-red-500 border-b-2 border-black"
+              >
+                X
+              </button>
+            </div>
 
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <CompanyIcon className="w-5 h-5 mr-2 text-gray-600" />
+                <p>
+                  <strong>Company:</strong> {selectedJob.company}
+                </p>
+              </div>
+              <div className="flex items-center">
+                <LocationIcon className="w-5 h-5 mr-2 text-gray-600" />
+                <p>
+                  <strong>Location:</strong> {selectedJob.location}
+                </p>
+              </div>
+              <div className="flex items-center">
+                <EmploymentIcon className="w-5 h-5 mr-2 text-gray-600" />
+                <p>
+                  <strong>Employment Type:</strong> {selectedJob.jobType}
+                </p>
+              </div>
+              {selectedJob.department && (
+                <div className="flex items-center">
+                  <JobTypeIcon className="w-5 h-5 mr-2 text-gray-600" />
+                  <p>
+                    <strong>Department:</strong> {selectedJob.department}
+                  </p>
+                </div>
+              )}
+              <div className="flex items-start">
+                <DescriptionIcon className="w-5 h-5 mr-2 text-gray-600 mt-1" />
+                <div>
+                  <p>
+                    <strong>Description:</strong>
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap">
+                    {selectedJob.description}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <RequirementsIcon className="w-5 h-5 mr-2 text-gray-600 mt-1" />
+                <div>
+                  <p>
+                    <strong>Requirements:</strong>
+                  </p>
+                  <ul className="list-disc pl-5">
+                    {selectedJob.requirements?.map((req, index) => (
+                      <li key={index}>{req}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              {selectedJob.skills && selectedJob.skills.length > 0 && (
+                <div className="flex items-start">
+                  <RequirementsIcon className="w-5 h-5 mr-2 text-gray-600 mt-1" />
+                  <div>
+                    <p>
+                      <strong>Skills:</strong>
+                    </p>
+                    <ul className="list-disc pl-5">
+                      {selectedJob.skills?.map((skill, index) => (
+                        <li key={index}>{skill}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              {selectedJob.salary && (
+                <div className="flex items-center">
+                  <SalaryIcon className="w-5 h-5 mr-2 text-gray-600" />
+                  <p>
+                    <strong>Salary:</strong> $
+                    {selectedJob.salary?.toLocaleString()}
+                  </p>
+                </div>
+              )}
+              {selectedJob.deadline && (
+                <div className="flex items-center">
+                  <JobTypeIcon className="w-5 h-5 mr-2 text-gray-600" />
+                  <p>
+                    <strong>Application Deadline:</strong>{" "}
+                    {new Date(selectedJob.deadline).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 flex justify-end gap-4">
+              <button
+                onClick={() => setSelectedJob(null)}
+                className="px-6 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Back
+              </button>
+              {appliedJobs.has(selectedJob.title) ? (
+                <button
+                  disabled
+                  className="px-6 py-2 bg-gray-400 text-white rounded cursor-not-allowed"
+                >
+                  Already Applied
+                </button>
+              ) : (
+              <button
+                onClick={() => setShowApplicationForm(true)}
+                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Apply Now
+              </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* File Upload Modal */}
       {showApplicationForm && selectedJob && (
-        <FileUpload
-          onBack={() => setShowApplicationForm(false)}
-          onSubmit={handleSubmitApplication}
-          jobTitle={selectedJob.Title}
-        />
+        <div className="fixed inset-0 bg-white z-60 overflow-y-auto flex justify-center items-start pt-20">
+          <FileUpload
+            onBack={() => {
+              setShowApplicationForm(false);
+              // Keep the job selected so we can return to details
+              setSelectedJob(selectedJob);
+            }}
+            onSubmit={handleSubmitApplication}
+            jobTitle={selectedJob.title}
+            department={selectedJob.department}
+            location={selectedJob.location}
+          />
+        </div>
       )}
     </>
   );

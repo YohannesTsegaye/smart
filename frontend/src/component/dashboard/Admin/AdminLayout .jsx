@@ -1,16 +1,33 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showStatusWarning, setShowStatusWarning] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Check authentication
-  if (!localStorage.getItem("isAdmin")) {
-    navigate("/login");
+  // Get user data from localStorage
+  const getUserData = () => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      return JSON.parse(userData);
+    }
     return null;
-  }
+  };
+
+  const user = getUserData();
+
+  // Check user status on component mount and when user data changes
+  useEffect(() => {
+    if (user && user.status && user.status !== 'Active') {
+      setShowStatusWarning(true);
+      // Auto-logout after 5 seconds
+      setTimeout(() => {
+        handleLogout();
+      }, 5000);
+    }
+  }, [user]);
 
   const navItems = [
     { path: "/admin/dashboard", name: "Dashboard", icon: "📊" },
@@ -23,12 +40,29 @@ const AdminLayout = () => {
   ];
 
   const handleLogout = () => {
+    // Clear all authentication data
     localStorage.removeItem("isAdmin");
-    navigate("/login");
+    localStorage.removeItem("user");
+    localStorage.removeItem("access_token");
+    
+    // Redirect to jobs page
+    window.location.href = "/jobs";
   };
 
   return (
     <div className="flex h-screen bg-gray-100">
+      {/* Status Warning Banner */}
+      {showStatusWarning && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white p-4 text-center">
+          <div className="flex items-center justify-center space-x-2">
+            <span className="text-lg">⚠️</span>
+            <span className="font-medium">
+              Your account has been deactivated. You will be logged out automatically in 5 seconds.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <div
         className={`${
@@ -90,11 +124,18 @@ const AdminLayout = () => {
                 to="/admin/profile"
                 className="flex items-center space-x-2 hover:bg-gray-100 p-2 rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                  A
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+                  {user?.email?.charAt(0).toUpperCase() || "A"}
                 </div>
                 {sidebarOpen && (
-                  <span className="font-medium text-black">Admin</span>
+                  <div className="text-right">
+                    <div className="font-medium text-black text-sm">
+                      {user?.role === "super_admin" ? "Super Admin" : "Admin"}
+                    </div>
+                    <div className="text-gray-600 text-xs">
+                      {user?.email || "admin@example.com"}
+                    </div>
+                  </div>
                 )}
               </Link>
             </div>

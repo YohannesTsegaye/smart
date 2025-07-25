@@ -1,22 +1,29 @@
 import React, { useState } from "react";
 import UploadIcon from "../../assets/icons/UploadIcon";
 import { XCircle } from "lucide-react";
+import { CandidatesService } from "../../services/candidates.service";
 
-function FileUpload({ onBack, onSubmit, jobTitle }) {
+function FileUpload({ onBack, onSubmit, jobTitle, department, location }) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
-    email: "",
+    email: localStorage.getItem('userEmail') || "",
+    phoneNumber: "+251",
     coverLetter: "",
     gpa: "",
     resumeLink: "",
     experience: "",
     skills: "",
+    department: department || "Engineering",
+    location: location || "Ethiopia",
   });
+
   const [errors, setErrors] = useState({
     fullName: "",
     email: "",
+    phoneNumber: "",
     coverLetter: "",
     file: "",
     gpa: "",
@@ -25,7 +32,6 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
     skills: "",
   });
 
-  // Experience options
   const experienceOptions = [
     "Entry Level (0-2 years)",
     "Junior (2-5 years)",
@@ -35,28 +41,28 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
     "Executive (15+ years)",
   ];
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+  const handleDrag = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "dragenter" || event.type === "dragover") {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (event.type === "dragleave") {
       setDragActive(false);
     }
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDrop = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateFile(e.dataTransfer.files[0]);
+    if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+      validateFile(event.dataTransfer.files[0]);
     }
   };
 
-  const handleChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      validateFile(e.target.files[0]);
+  const handleChange = (event) => {
+    if (event.target.files && event.target.files[0]) {
+      validateFile(event.target.files[0]);
     }
   };
 
@@ -93,10 +99,38 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
     document.getElementById("file-input").value = "";
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-    if (name === "gpa") {
+    // Save email to localStorage when user starts typing
+    if (name === 'email' && value.trim()) {
+      localStorage.setItem('userEmail', value.trim());
+    }
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+
+    if (name === "phoneNumber") {
+      // Ensure the phone number always starts with +251
+      let phoneValue = value;
+      if (!phoneValue.startsWith("+251")) {
+        phoneValue = "+251" + phoneValue.replace(/^\+251/, "");
+      }
+      // Only allow numbers after +251
+      phoneValue = phoneValue.replace(/[^+\d]/g, "");
+      setFormData((prev) => ({ ...prev, [name]: phoneValue }));
+      if (phoneValue.length !== 13) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]: "Phone number must be 9 digits after +251",
+        }));
+      } else {
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+    } else if (name === "gpa") {
       const validatedValue = value.replace(/[^0-9.]/g, "");
       const numValue = parseFloat(validatedValue);
       if (!isNaN(numValue) && (numValue < 0.5 || numValue > 4.0)) {
@@ -108,9 +142,17 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
         setErrors((prev) => ({ ...prev, gpa: "" }));
       }
       setFormData((prev) => ({ ...prev, [name]: validatedValue }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-      if (errors[name]) {
+    } else if (name === "fullName") {
+      // Only allow letters and spaces for full name
+      const nameValue = value.replace(/[^A-Za-z\s]/g, "");
+      setFormData((prev) => ({ ...prev, [name]: nameValue }));
+      if (!validateName(nameValue) && nameValue.trim()) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]:
+            "Please enter a valid full name (only letters, at least first and last name)",
+        }));
+      } else {
         setErrors((prev) => ({ ...prev, [name]: "" }));
       }
     }
@@ -125,85 +167,242 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
     try {
       new URL(url);
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    let isValid = true;
+  const validateName = (name) => {
+    // Only letters and spaces allowed, at least two words for full name
+    const nameRegex = /^[A-Za-z]+(?:\s[A-Za-z]+)+$/;
+    return nameRegex.test(name.trim());
+  };
+
+  const validateSkills = (skills) => {
+    // Split by comma and trim each skill
+    const skillsArray = skills.split(",").map((skill) => skill.trim());
+    // Filter out empty strings and check if we have at least 2 valid skills
+    const validSkills = skillsArray.filter((skill) => skill.length > 0);
+    return validSkills.length >= 2;
+  };
+
+  const validateCoverLetter = (letter) => {
+    // Minimum 50 chars, maximum 1000 chars, must contain complete sentences
+    return (
+      letter.trim().length >= 50 &&
+      letter.trim().length <= 1000 &&
+      /[.!?](\s|$)/.test(letter)
+    ); // Checks for proper sentence ending
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+
+    // Use validateForm function here
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      // Check if user has already applied to this job
+      try {
+        const checkResponse = await CandidatesService.checkExistingApplication(
+          formData.email.trim(),
+          jobTitle
+        );
+        
+        if (checkResponse.hasApplied) {
+          alert(checkResponse.message);
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (checkError) {
+        console.error("Error checking existing application:", checkError);
+        // Continue with submission if check fails
+      }
+
+      let resumePath = formData.resumeLink;
+
+      if (selectedFile) {
+        try {
+          const uploadResponse = await CandidatesService.uploadResume(
+            selectedFile
+          );
+          resumePath = uploadResponse.path;
+        } catch (error) {
+          console.error("Upload failed:", error);
+          throw new Error(
+            error.response?.data?.message || "Failed to upload file"
+          );
+        }
+      }
+
+      // Format data to match PostgreSQL schema
+      const candidateData = {
+        fullname: formData.fullName.trim(),
+        email: formData.email.trim(),
+        gpa: parseFloat(formData.gpa).toFixed(2),
+        experience: formData.experience,
+        skills: formData.skills.trim(),
+        coverletter: formData.coverLetter.trim(),
+        jobTitle: jobTitle,
+        location: location || formData.location,
+        department: department || formData.department,
+        status: "Received",
+        phoneNumber: formData.phoneNumber.trim(),
+      };
+
+      // Add either resumepath or link, but not both
+      if (resumePath) {
+        candidateData.resumepath = resumePath;
+      } else if (formData.resumeLink) {
+        candidateData.link = formData.resumeLink;
+      }
+
+      console.log("Submitting candidate data:", candidateData);
+
+      try {
+        const response = await CandidatesService.createCandidate(candidateData);
+        console.log("Server response:", response);
+
+        // Check if the response contains any errors
+        if (response.error) {
+          throw new Error(response.error);
+        }
+
+        alert("Application submitted successfully!");
+        onSubmit(response);
+      } catch (error) {
+        // Log the complete error object for debugging
+        console.error("Complete error object:", error);
+        console.error("Error response data:", error.response?.data);
+        console.error("Error status:", error.response?.status);
+
+        // Extract detailed error information
+        const errorDetails = error.details || {};
+        const errorMessage = error.message;
+        const serverResponse = error.response?.data;
+
+        // Log the full error details
+        console.error("Detailed submission error:", {
+          error,
+          details: errorDetails,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          serverResponse,
+        });
+
+        // Display a user-friendly error message
+        const displayMessage =
+          serverResponse?.message ||
+          error.response?.data?.message ||
+          errorMessage ||
+          "Failed to submit application";
+
+        // Check if this is a duplicate application error
+        if (displayMessage.includes("already applied") || displayMessage.includes("already exists")) {
+          alert(displayMessage);
+        } else {
+        alert(displayMessage);
+        }
+
+        setErrors((prev) => ({
+          ...prev,
+          server: displayMessage,
+        }));
+
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error("Submission failed:", error);
+      setErrors((prev) => ({
+        ...prev,
+        server:
+          error.response?.data?.message ||
+          "Failed to submit application. Please try again.",
+      }));
+      setIsSubmitting(false);
+    }
+  };
+
+  const validateForm = () => {
     const newErrors = {};
 
-    // Validate full name
+    // Full Name Validation
     if (!formData.fullName.trim()) {
       newErrors.fullName = "Full name is required";
-      isValid = false;
+    } else if (!validateName(formData.fullName)) {
+      newErrors.fullName =
+        "Please enter a valid full name (only letters, at least first and last name)";
     }
 
-    // Validate email
+    // Email Validation
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
-      isValid = false;
     } else if (!validateEmail(formData.email)) {
       newErrors.email = "Please enter a valid email address";
-      isValid = false;
     }
 
-    // Validate cover letter
+    // Phone Number Validation
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!/^[+]251\d{9}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = "Phone must be +251 followed by 9 digits";
+    }
+
+    // Cover Letter Validation
     if (!formData.coverLetter.trim()) {
       newErrors.coverLetter = "Cover letter is required";
-      isValid = false;
-    } else if (formData.coverLetter.length < 50) {
-      newErrors.coverLetter = "Cover letter must be at least 50 characters";
-      isValid = false;
+    } else if (!validateCoverLetter(formData.coverLetter)) {
+      newErrors.coverLetter =
+        "Cover letter must be between 50-1000 characters and contain complete sentences";
     }
 
-    // Validate GPA
-    if (!formData.gpa.trim()) {
+    // GPA Validation
+    const gpa = parseFloat(formData.gpa);
+    if (!formData.gpa) {
       newErrors.gpa = "GPA is required";
-      isValid = false;
-    } else {
-      const gpaValue = parseFloat(formData.gpa);
-      if (isNaN(gpaValue)) {
-        newErrors.gpa = "Please enter a valid GPA";
-        isValid = false;
-      } else if (gpaValue < 0.5 || gpaValue > 4.0) {
-        newErrors.gpa = "GPA must be between 0.5 and 4.0";
-        isValid = false;
-      }
+    } else if (isNaN(gpa) || gpa < 0.0 || gpa > 4.0) {
+      newErrors.gpa = "GPA must be between 0.00 and 4.00";
     }
 
-    // Validate file or resume link
+    // Resume Validation
     if (!selectedFile && !formData.resumeLink) {
-      newErrors.file = "Please either upload your resume or provide a link";
-      newErrors.resumeLink =
-        "Please either upload your resume or provide a link";
-      isValid = false;
+      newErrors.file = "Please upload resume or provide a link";
+      newErrors.resumeLink = "Please upload resume or provide a link";
     }
-
-    // Validate resume link format if provided
     if (formData.resumeLink && !validateUrl(formData.resumeLink)) {
       newErrors.resumeLink = "Please enter a valid URL";
-      isValid = false;
     }
 
-    setErrors(newErrors);
-
-    if (isValid) {
-      onSubmit({
-        ...formData,
-        file: selectedFile,
-        jobTitle: jobTitle,
-      });
+    // Experience Validation
+    if (!formData.experience) {
+      newErrors.experience = "Experience is required";
     }
+
+    // Skills Validation
+    if (!formData.skills.trim()) {
+      newErrors.skills = "Skills are required";
+    } else if (!validateSkills(formData.skills)) {
+      newErrors.skills =
+        "Please enter at least 2 valid skills, separated by commas";
+    }
+
+    return newErrors;
   };
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-white p-2 rounded-md shadow-sm">
       <div className="flex justify-between items-center mb-0">
-        <h2 className="text-lg font-medium">Apply for {jobTitle}</h2>
-
+        <h2 className="text-lg font-medium text-black">Apply for {jobTitle}</h2>
+        <div className="text-sm text-gray-600">
+          <p>Department: {department}</p>
+          <p>Location: {location}</p>
+        </div>
         <button
           onClick={onBack}
           className="text-gray-500 hover:text-black text-2xl bg-red-500 border-b-2 border-black"
@@ -228,7 +427,7 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
               name="fullName"
               value={formData.fullName}
               onChange={handleInputChange}
-              className={`w-full px-3 py-2 border rounded-md ${
+              className={`w-full px-3 py-2 border rounded-md text-black ${
                 errors.fullName ? "border-red-500" : "border-gray-300"
               }`}
               placeholder="John Doe"
@@ -252,13 +451,37 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className={`w-full px-3 py-2 border rounded-md ${
+              className={`w-full px-3 py-2 border rounded-md text-black ${
                 errors.email ? "border-red-500" : "border-gray-300"
               }`}
               placeholder="your.email@example.com"
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            )}
+          </div>
+
+          {/* Phone Number */}
+          <div>
+            <label
+              htmlFor="phoneNumber"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Phone Number *
+            </label>
+            <input
+              type="tel"
+              id="phoneNumber"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded-md text-black ${
+                errors.phoneNumber ? "border-red-500" : "border-gray-300"
+              }`}
+              placeholder="+251"
+            />
+            {errors.phoneNumber && (
+              <p className="mt-1 text-sm text-red-600">{errors.phoneNumber}</p>
             )}
           </div>
 
@@ -276,7 +499,7 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
               name="gpa"
               value={formData.gpa}
               onChange={handleInputChange}
-              className={`w-full px-3 py-2 border rounded-md ${
+              className={`w-full px-3 py-2 border rounded-md text-black ${
                 errors.gpa ? "border-red-500" : "border-gray-300"
               }`}
               placeholder="3.5"
@@ -325,41 +548,6 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
                   </span>
                 </label>
               </div>
-
-              {/* Resume Link Input */}
-              <div>
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-2">OR</span>
-                  <div className="flex-grow border-t border-gray-300"></div>
-                </div>
-                <div className="mt-4">
-                  <label
-                    htmlFor="resumeLink"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Resume Link
-                  </label>
-                  <input
-                    type="url"
-                    id="resumeLink"
-                    name="resumeLink"
-                    value={formData.resumeLink}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/your-resume"
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm text-black ${
-                      errors.resumeLink
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-blue-500"
-                    }`}
-                  />
-                  {errors.resumeLink && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.resumeLink}
-                    </p>
-                  )}
-                </div>
-              </div>
-
               {/* Selected File Display */}
               {selectedFile && (
                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
@@ -381,6 +569,38 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
             </div>
           </div>
 
+          {/* Resume Link Input */}
+          <div>
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500 mr-2">OR</span>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+            <div className="mt-4">
+              <label
+                htmlFor="resumeLink"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Resume Link
+              </label>
+              <input
+                type="url"
+                id="resumeLink"
+                name="resumeLink"
+                value={formData.resumeLink}
+                onChange={handleInputChange}
+                placeholder="https://example.com/your-resume"
+                className={`w-full px-3 py-2 border rounded-md shadow-sm text-black ${
+                  errors.resumeLink
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
+              />
+              {errors.resumeLink && (
+                <p className="mt-1 text-sm text-red-600">{errors.resumeLink}</p>
+              )}
+            </div>
+          </div>
+
           {/* Cover Letter */}
           <div>
             <label
@@ -395,7 +615,7 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
               value={formData.coverLetter}
               onChange={handleInputChange}
               rows={5}
-              className={`w-full px-3 py-2 border rounded-md ${
+              className={`w-full px-3 py-2 border rounded-md text-black ${
                 errors.coverLetter ? "border-red-500" : "border-gray-300"
               }`}
               placeholder="Write your cover letter here..."
@@ -421,7 +641,7 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
               name="experience"
               value={formData.experience}
               onChange={handleInputChange}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-3 ${
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-3 text-black ${
                 errors.experience ? "border-red-500" : ""
               }`}
             >
@@ -451,7 +671,7 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
               value={formData.skills}
               onChange={handleInputChange}
               rows={3}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black ${
                 errors.skills ? "border-red-500" : ""
               }`}
               placeholder="e.g., JavaScript, React, Node.js, Project Management"
@@ -466,15 +686,17 @@ function FileUpload({ onBack, onSubmit, jobTitle }) {
             <button
               type="button"
               onClick={onBack}
-              className="text-gray-500 hover:text-black text-2xl bg-red-500 border-b-2 border-black"
+              className="text-black-500 hover:text-black text-2xl bg-red-500 border-b-2 border-black"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={isSubmitting}
             >
-              Submit Application
+              {isSubmitting ? "Submitting..." : "Submit Application"}
             </button>
           </div>
         </div>

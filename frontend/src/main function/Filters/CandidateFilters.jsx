@@ -1,8 +1,12 @@
 import React, { useState } from "react";
-const CandidateFilters = ({ candidates, onFilterChange, onClearFilters }) => {
+
+const CandidateFilters = ({
+  candidates = [],
+  onFilterChange,
+  onClearFilters,
+}) => {
   const [filters, setFilters] = useState({
     department: "",
-    location: "",
     status: "",
   });
 
@@ -13,33 +17,26 @@ const CandidateFilters = ({ candidates, onFilterChange, onClearFilters }) => {
     onFilterChange(newFilters);
   };
 
-  const clearFilters = () => {
-    const resetFilters = {
-      department: "",
-      location: "",
-      status: "",
-    };
-    setFilters(resetFilters);
-    onClearFilters();
-  };
+  // Get unique departments from candidates
+  const uniqueDepartments = [
+    ...new Set(candidates.map((candidate) => candidate.department)),
+  ].filter(Boolean);
 
   return (
-    <div className="mb-4 bg-gray-50 p-3 rounded-lg">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 w-full">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-[10px] font-medium mb-1 text-black">
+          <label className="block text-sm font-medium text-black mb-2">
             Department
           </label>
           <select
             name="department"
             value={filters.department}
             onChange={handleFilterChange}
-            className="w-full px-2 py-1 border border-gray-300 rounded text-[11px] text-black"
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-black text-sm"
           >
             <option value="">All Departments</option>
-            {[
-              ...new Set(candidates.map((candidate) => candidate.department)),
-            ].map((dept) => (
+            {uniqueDepartments.map((dept) => (
               <option key={dept} value={dept}>
                 {dept}
               </option>
@@ -48,31 +45,18 @@ const CandidateFilters = ({ candidates, onFilterChange, onClearFilters }) => {
         </div>
 
         <div>
-          <label className="block text-[10px] font-medium mb-1 text-black">
-            Country
-          </label>
-          <input
-            type="text"
-            name="location"
-            value={filters.location}
-            onChange={handleFilterChange}
-            placeholder="Enter country name"
-            className="w-full px-2 py-1 border border-gray-300 rounded text-[11px] text-black"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-medium mb-1 text-black">
+          <label className="block text-sm font-medium text-black mb-2">
             Status
           </label>
           <select
             name="status"
             value={filters.status}
             onChange={handleFilterChange}
-            className="w-full px-2 py-1 border border-gray-300 rounded text-[11px] text-black"
+            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-black text-sm"
           >
-            <option value="">All Statuses</option>
+            <option value="">All Status</option>
             <option value="Under Review">Under Review</option>
+            <option value="Received">Received</option>
             <option value="Accepted">Accepted</option>
             <option value="Rejected">Rejected</option>
             <option value="Interview">Interview</option>
@@ -82,10 +66,10 @@ const CandidateFilters = ({ candidates, onFilterChange, onClearFilters }) => {
 
         <div className="flex items-end">
           <button
-            onClick={clearFilters}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-[11px] text-black"
+            onClick={onClearFilters}
+            className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Clear All
+            Clear Filters
           </button>
         </div>
       </div>
