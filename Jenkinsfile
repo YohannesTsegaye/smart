@@ -8,7 +8,7 @@ pipeline {
   stages {
     stage('Clone Repo') {
       steps {
-        git branch:'main','https://github.com/YohannesTsegaye/smart.git'
+        git 'https://github.com/YohannesTsegaye/smart.git'
       }
     }
 
