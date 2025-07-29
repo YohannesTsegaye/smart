@@ -9,6 +9,7 @@ pipeline {
     stage('Clone Repo') {
       steps {
         git 'https://github.com/YohannesTsegaye/smart.git'
+        echo "i am the error."
       }
     }
     stage('Install Frontend') {
