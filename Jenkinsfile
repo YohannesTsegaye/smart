@@ -11,7 +11,6 @@ pipeline {
         git 'https://github.com/YohannesTsegaye/smart.git'
       }
     }
-
     stage('Install Frontend') {
       steps {
         dir('frontend') {
@@ -26,6 +25,13 @@ pipeline {
           sh 'npm run build'
         }
       }
+    }
+     stage('Test frontend'){
+      steps{
+        dir('frontend'){
+          sh'npm run test'
+        }
+      }  
     }
 
     stage('Install Backend') {
