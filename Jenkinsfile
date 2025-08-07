@@ -8,7 +8,8 @@ pipeline {
   stages {
     stage('Clone Repo') {
       steps {
-        git 'https://github.com/YohannesTsegaye/smart.git'
+        git branch: 'main', url: 'https://github.com/YohannesTsegaye/smart.git'
+
       }
     }
 
@@ -84,4 +85,5 @@ sh ' cd frontend'
     }
   }
 }
+
 
