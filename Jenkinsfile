@@ -77,10 +77,11 @@ sh ' cd frontend'
 
   post {
     failure {
-      echo "Build failed! Check errors above."
+      echo "Build failed! Checkerrors above."
     }
     success {
       echo "Build completed successfully!"
     }
   }
 }
+
