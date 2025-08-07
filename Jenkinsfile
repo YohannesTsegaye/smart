@@ -4,6 +4,9 @@ pipeline {
   environment {
     NODE_ENV = 'development'
   }
+  tools {
+    nodejs "Node 18" // Use the NodeJS installed from Global Tool Config
+  }
 
   stages {
     stage('Clone Repo') {
@@ -78,3 +81,4 @@ pipeline {
     }
   }
 }
+
