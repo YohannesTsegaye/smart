@@ -9,14 +9,12 @@ pipeline {
     stage('Clone Repo') {
       steps {
         git branch: 'main', url: 'https://github.com/YohannesTsegaye/smart.git'
-
       }
     }
 
     stage('Install Frontend') {
       steps {
         dir('frontend') {
-sh ' cd frontend'
           sh 'npm install'
         }
       }
@@ -25,7 +23,6 @@ sh ' cd frontend'
     stage('Build Frontend') {
       steps {
         dir('frontend') {
-sh ' cd frontend'
           sh 'npm run build'
         }
       }
@@ -34,7 +31,6 @@ sh ' cd frontend'
     stage('Install Backend') {
       steps {
         dir('backend') {
-sh ' cd backend'
           sh 'npm install'
         }
       }
@@ -43,7 +39,6 @@ sh ' cd backend'
     stage('Build Backend') {
       steps {
         dir('backend') {
-sh ' cd backend'
           sh 'npm run build'
         }
       }
@@ -52,38 +47,34 @@ sh ' cd backend'
     stage('Test Backend') {
       steps {
         dir('backend') {
-sh ' cd backend'
           sh 'npm run test'
         }
       }
     }
-stage('start backend') {
+
+    stage('Start Backend') {
       steps {
         dir('backend') {
-sh ' cd backend'
           sh 'npm run start'
         }
       }
     }
-stage('start frontend') {
+
+    stage('Start Frontend') {
       steps {
         dir('frontend') {
-sh ' cd frontend'
           sh 'npm start'
         }
       }
     }
-
   }
 
   post {
     failure {
-      echo "Build failed! Checkerrors above."
+      echo "Build failed! Check errors above."
     }
     success {
       echo "Build completed successfully!"
     }
   }
 }
-
-
