@@ -8,96 +8,103 @@ pipeline {
     }
 
     stages {
-        stage('🏗️ 1. Checkout & Setup') {
+        stage('🚀 1. Environment Setup') {
             steps {
                 cleanWs()
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/YohannesTsegaye/smart-recruit-frontend.git',
-                        credentialsId: 'github-credentials'
-                    ]]
-                ])
-                echo "✅ Repository cloned successfully"
-                
-                sh 'node --version'
-                sh 'npm --version'
-            }
-        }
-
-        stage('📦 2. Install Dependencies') {
-            steps {
                 script {
-                    // Clean existing installation
-                    sh 'rm -rf node_modules'
+                    // Verify Node.js and npm are available
+                    def nodeVersion = sh(script: 'node --version', returnStdout: true).trim()
+                    def npmVersion = sh(script: 'npm --version', returnStdout: true).trim()
+                    echo "ℹ️ Using Node.js ${nodeVersion} and npm ${npmVersion}"
                     
-                    // Strategy 1: Try normal install first
-                    try {
-                        sh 'npm install --no-audit --prefer-offline'
-                        echo "✅ Initial npm install completed"
-                    } catch (err) {
-                        echo "⚠️ Initial install failed, trying with network refresh"
-                        sh 'npm install --no-audit --prefer-offline --fetch-timeout=60000'
-                    }
-                    
-                    // Verify critical dependencies are actually installed
-                    def verifyInstall = { dep ->
-                        return sh(script: "npm list ${dep} --depth=0 --parseable", returnStatus: true) == 0
-                    }
-                    
-                    // List of critical devDependencies to verify
-                    def criticalDeps = ['eslint', 'vite']
-                    def missingDeps = criticalDeps.findAll { !verifyInstall(it) }
-                    
-                    if (missingDeps) {
-                        echo "⚠️ Missing critical dependencies: ${missingDeps}"
-                        
-                        // Strategy 2: Explicitly install missing packages
-                        sh "npm install ${missingDeps.join(' ')} --save-dev --no-audit --prefer-offline"
-                        
-                        // Final verification
-                        missingDeps = criticalDeps.findAll { !verifyInstall(it) }
-                        if (missingDeps) {
-                            // Strategy 3: Nuclear option - clean everything and reinstall
-                            echo "⚠️ Critical dependencies still missing, performing clean install"
-                            sh 'rm -rf node_modules package-lock.json'
-                            sh 'npm install --no-audit --prefer-offline'
-                            
-                            // Final check
-                            missingDeps = criticalDeps.findAll { !verifyInstall(it) }
-                            if (missingDeps) {
-                                error("❌ Failed to install critical dependencies: ${missingDeps}")
-                            }
-                        }
-                    }
-                    
-                    echo "✅ Verified all critical dependencies: ${criticalDeps}"
+                    // Checkout code
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/YohannesTsegaye/smart-recruit-frontend.git',
+                            credentialsId: 'github-credentials'
+                        ]]
+                    ])
+                    echo "✅ Repository cloned successfully"
                 }
             }
         }
 
-        stage('🧹 3. Lint Code') {
+        stage('📦 2. Dependency Installation') {
+            steps {
+                script {
+                    // Clean previous installation
+                    sh 'rm -rf node_modules'
+                    
+                    // Strategy 1: Generate package-lock.json if missing
+                    if (!fileExists('package-lock.json')) {
+                        echo "ℹ️ No package-lock.json found, generating one..."
+                        sh 'npm install --package-lock-only --no-audit'
+                    }
+                    
+                    // Strategy 2: Install using package-lock.json
+                    try {
+                        sh 'npm ci --no-audit'
+                        echo "✅ Dependencies installed via npm ci"
+                    } catch (ciErr) {
+                        echo "⚠️ npm ci failed, falling back to npm install"
+                        
+                        // Strategy 3: Regular install with devDependencies
+                        try {
+                            sh 'npm install --no-audit --include=dev'
+                            echo "✅ Dependencies installed via npm install"
+                        } catch (installErr) {
+                            echo "⚠️ Regular install failed, trying per-package install"
+                            
+                            // Strategy 4: Install critical packages individually
+                            sh 'npm install eslint vite --save-dev --no-audit'
+                        }
+                    }
+                    
+                    // Final verification
+                    def verifyDependency = { dep ->
+                        return sh(
+                            script: "npm list ${dep} --depth=0 --parseable=true",
+                            returnStatus: true
+                        ) == 0
+                    }
+                    
+                    if (!verifyDependency('eslint') || !verifyDependency('vite')) {
+                        error("❌ Critical dependencies (eslint/vite) could not be installed")
+                    }
+                    
+                    echo "✅ Verified all critical dependencies"
+                }
+            }
+        }
+
+        stage('🧹 3. Linting') {
             steps {
                 script {
                     try {
                         sh 'npx eslint --version'
-                        sh 'npx eslint .'
-                        echo "✅ Linting passed"
+                        sh 'npx eslint . --max-warnings=0'
+                        echo "✅ Linting passed with no warnings"
                     } catch (err) {
-                        echo "⚠️ Linting issues found (not blocking)"
+                        echo "⚠️ Linting issues found (not blocking build)"
                     }
                 }
             }
         }
 
-        stage('🏗️ 5. Build Project') {
+        stage('🏗️ 4. Building') {
             steps {
                 script {
                     sh 'npx vite --version'
-                    sh 'npx vite build'
+                    sh 'npx vite build --emptyOutDir'
                     echo "✅ Build completed successfully"
-                    sh 'du -sh dist/'
+                    
+                    // Verify build output
+                    def buildDir = fileExists('dist') ? 'dist' : 'build'
+                    sh "ls -la ${buildDir}/"
+                    echo "📦 Build output size:"
+                    sh "du -sh ${buildDir}/"
                 }
             }
         }
@@ -109,7 +116,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "✅ Pipeline succeeded!"
+            echo "🎉 Pipeline succeeded!"
         }
         failure {
             echo "❌ Pipeline failed"
