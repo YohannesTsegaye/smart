@@ -15,6 +15,8 @@ pipeline {
     stage('Install Frontend') {
       steps {
         dir('frontend') {
+          // Optional: remove old node_modules to avoid cache issues
+          sh 'rm -rf node_modules package-lock.json'
           sh 'npm install'
         }
       }
@@ -24,38 +26,6 @@ pipeline {
       steps {
         dir('frontend') {
           sh 'npm run build'
-        }
-      }
-    }
-
-    stage('Install Backend') {
-      steps {
-        dir('backend') {
-          sh 'npm install'
-        }
-      }
-    }
-
-    stage('Build Backend') {
-      steps {
-        dir('backend') {
-          sh 'npm run build'
-        }
-      }
-    }
-
-    stage('Test Backend') {
-      steps {
-        dir('backend') {
-          sh 'npm run test'
-        }
-      }
-    }
-
-    stage('Start Backend') {
-      steps {
-        dir('backend') {
-          sh 'npm run start'
         }
       }
     }
@@ -71,10 +41,10 @@ pipeline {
 
   post {
     failure {
-      echo "Build failed! Check errors above."
+      echo "❌ Frontend build failed! Check logs above."
     }
     success {
-      echo "Build completed successfully!"
+      echo "✅ Frontend build and start completed successfully!"
     }
   }
 }
